@@ -11,7 +11,7 @@ const PORT = 4000;
 // 💾 DB 설정 (true, true -> 사람이 읽기 좋게 저장)
 const db = new JsonDB(new Config("config", true, true, '/'));
 
-// 🚀 DB 초기화 (영수증도 이제 IP를 사용합니다)
+// 🚀 DB 초기화
 async function initDB() {
     try {
         await db.getData("/settings");
@@ -20,7 +20,7 @@ async function initDB() {
             printers: {
                 kitchen1_ip: "192.168.50.3",
                 kitchen2_ip: "192.168.50.19",
-                receipt_ip: "192.168.50.20" // ✨ [변경] 이름 대신 IP 사용
+                receipt_ip: "192.168.50.20" 
             },
             design: {
                 title: "THE COLLEGIATE GRILL",
@@ -65,8 +65,9 @@ app.post('/api/settings', async (req, res) => {
 });
 
 // ==========================================
-// 🖨️ 프린터 로직 (Network Only)
+// 🖨️ 프린터 & 하드웨어 제어 로직
 // ==========================================
+
 async function getAbbreviatedMod(name) {
     if (!name) return '';
     const settings = await db.getData("/settings");
@@ -89,7 +90,7 @@ function formatCloverDate(dateObj) {
     return `${day}-${monthNames[dateObj.getMonth()]}-${dateObj.getFullYear()}`;
 }
 
-// ✨ [통합] 모든 프린터는 이제 이 함수 하나로 통신합니다.
+// 🌐 네트워크 프린터 전송 함수 (기본)
 function sendToNetworkPrinter(ip, buffer, label) {
     return new Promise((resolve) => {
         if (!ip || ip === "0.0.0.0") { resolve(); return; }
@@ -108,6 +109,49 @@ function sendToNetworkPrinter(ip, buffer, label) {
         client.on('timeout', () => { console.error(`❌ [${label}] 타임아웃`); client.destroy(); resolve(); });
     });
 }
+
+// ✨ [NEW] 돈통 열기 함수 (Open Cash Drawer)
+function openCashDrawer(ip, port = 9100) {
+    return new Promise((resolve, reject) => {
+        if (!ip) {
+            console.error("❌ Printer IP missing for Cash Drawer");
+            return resolve(false); 
+        }
+
+        const client = new net.Socket();
+        client.setTimeout(3000);
+
+        client.connect(port, ip, () => {
+            console.log(`💵 [CashDrawer] Opening at ${ip}...`);
+
+            // ESC/POS Command: ESC p m t1 t2
+            // 0x1B 0x70 0x00(Pin2) 0x19(50ms) 0x78(240ms)
+            const openCommand = Buffer.from([0x1B, 0x70, 0x00, 0x19, 0x78]);
+            
+            // 혹시 Pin 5번을 사용하는 모델일 경우를 대비해 둘 다 보내기도 함
+            // const openCommandPin5 = Buffer.from([0x1B, 0x70, 0x01, 0x19, 0x78]);
+            
+            client.write(openCommand, () => {
+                console.log('✅ Drawer Signal Sent');
+                client.end();
+                resolve(true);
+            });
+        });
+
+        client.on('error', (err) => {
+            console.error('❌ Drawer Error:', err.message);
+            client.destroy();
+            resolve(false); // 에러나도 서버 죽지 않게 false 반환
+        });
+
+        client.on('timeout', () => {
+            console.error('❌ Drawer Timeout');
+            client.destroy();
+            resolve(false);
+        });
+    });
+}
+
 
 // 🎨 주방 버퍼 생성
 async function generateKitchenBuffer(items, tableNumber, title) {
@@ -175,19 +219,20 @@ async function generateReceiptBuffer(data) {
     return buffer;
 }
 
+
 // ==========================================
-// 🧪 [추가] 프린터 연결 테스트 API
+// 🚀 API 라우트
 // ==========================================
+
+// 1. 프린터 연결 테스트
 app.post('/api/test-printer', async (req, res) => {
-    const { ip, port } = req.body; // port는 기본 9100
+    const { ip, port } = req.body; 
 
     if (!ip) {
         return res.status(400).json({ success: false, message: "IP Address is missing" });
     }
 
     console.log(`🧪 [테스트] IP: ${ip} 로 연결 시도 중...`);
-
-    // 테스트용 ESC/POS 명령어 (초기화 + 텍스트 + 커팅)
     const INIT = '\x1b\x40';
     const TEXT = 'Connection OK!\nTest Print Successful.\n\n\n';
     const CUT = '\x1d\x56\x42\x00';
@@ -201,8 +246,23 @@ app.post('/api/test-printer', async (req, res) => {
     }
 });
 
+// ✨ [NEW] 2. 돈통 열기 API (POS 연동용)
+app.post('/api/printer/open-drawer', async (req, res) => {
+    const { printerIp } = req.body; 
 
-// 🚀 메인 라우트
+    if (!printerIp) {
+        return res.status(400).json({ success: false, message: 'Printer IP required' });
+    }
+
+    try {
+        await openCashDrawer(printerIp);
+        res.json({ success: true, message: 'Drawer Open Signal Sent' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 3. 주문 출력 (메인)
 app.post('/print', async (req, res) => {
     const settings = await db.getData("/settings");
     const { items, totalAmount } = req.body;
@@ -220,17 +280,17 @@ app.post('/print', async (req, res) => {
 
     const promises = [];
 
-    // 1. 주방 (IP 전송)
+    // 1. 주방
     if (kitchenItems.length > 0) {
         promises.push(sendToNetworkPrinter(settings.printers.kitchen1_ip, await generateKitchenBuffer(kitchenItems, req.body.tableNumber, "KITCHEN"), "Kitchen 1"));
     }
 
-    // 2. 쉐이크 (IP 전송)
+    // 2. 쉐이크
     if (milkshakeItems.length > 0) {
         promises.push(sendToNetworkPrinter(settings.printers.kitchen2_ip, await generateKitchenBuffer(milkshakeItems, req.body.tableNumber, "MILKSHAKE"), "Kitchen 2"));
     }
 
-    // 3. 영수증 (✨ IP 전송으로 변경됨!)
+    // 3. 영수증
     if (totalAmount > 0) {
         promises.push(sendToNetworkPrinter(settings.printers.receipt_ip, await generateReceiptBuffer(req.body), "Receipt"));
     }

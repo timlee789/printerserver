@@ -9,26 +9,30 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; padding: 20px; max-width: 800px; margin: 0 auto; }
         h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { margin-top: 0; color: #555; }
+        h2 { margin-top: 0; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: #666; font-size: 0.9em; }
         
-        /* ✨ [수정] 입력창과 버튼을 나란히 놓기 위한 스타일 */
         .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .input-group input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        .input-group button.test-btn { width: 80px; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .input-group button.test-btn:hover { background: #5a6268; }
-
-        textarea { width: 100%; padding: 10px; height: 150px; font-family: monospace; border: 1px solid #ddd; border-radius: 5px; }
-        button.save-btn { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
-        button.save-btn:hover { background: #0056b3; }
+        .input-group input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
         
-        .msg { padding: 10px; border-radius: 5px; margin-bottom: 10px; display: none; text-align: center; }
+        /* 버튼 스타일링 */
+        button { cursor: pointer; border: none; border-radius: 5px; font-weight: bold; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .test-btn { width: 80px; padding: 10px; background: #6c757d; color: white; }
+        .drawer-btn { width: 110px; padding: 10px; background: #28a745; color: white; } /* 돈통 버튼 (녹색) */
+        .save-btn { background: #007bff; color: white; padding: 12px 20px; font-size: 16px; width: 100%; margin-top: 10px; }
+
+        textarea { width: 100%; padding: 10px; height: 150px; font-family: monospace; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        
+        .msg { padding: 10px; border-radius: 5px; margin-bottom: 10px; display: none; text-align: center; font-weight: bold; }
         .success { background: #d4edda; color: #155724; display: block; }
         .error { background: #f8d7da; color: #721c24; display: block; }
     </style>
 </head>
 <body>
-    <h1>🖨️ Printer Server Admin (Network)</h1>
+    <h1>🖨️ Printer Server Admin</h1>
     <div id="message" class="msg"></div>
 
     <form id="settingsForm">
@@ -38,20 +42,22 @@
             <label>Kitchen Printer 1 IP (Main Food)</label>
             <div class="input-group">
                 <input type="text" id="kitchen1_ip" placeholder="e.g. 192.168.50.3">
-                <button type="button" class="test-btn" onclick="testPrinter('kitchen1_ip')">Test</button>
+                <button type="button" class="test-btn" onclick="testPrinter('kitchen1_ip')">Test 🖨️</button>
             </div>
             
             <label>Kitchen Printer 2 IP (Shake/Drink)</label>
             <div class="input-group">
                 <input type="text" id="kitchen2_ip" placeholder="e.g. 192.168.50.19">
-                <button type="button" class="test-btn" onclick="testPrinter('kitchen2_ip')">Test</button>
+                <button type="button" class="test-btn" onclick="testPrinter('kitchen2_ip')">Test 🖨️</button>
             </div>
             
             <label>Receipt Printer IP (Network)</label>
             <div class="input-group">
                 <input type="text" id="receipt_ip" placeholder="e.g. 192.168.50.20">
-                <button type="button" class="test-btn" onclick="testPrinter('receipt_ip')">Test</button>
+                <button type="button" class="drawer-btn" onclick="testDrawer()">Open 💵</button>
+                <button type="button" class="test-btn" onclick="testPrinter('receipt_ip')">Test 🖨️</button>
             </div>
+            <p style="font-size: 0.8em; color: #888; margin-top: -10px;">* The Cash Drawer is connected to the Receipt Printer.</p>
         </div>
 
         <div class="card">
@@ -69,7 +75,7 @@
 
         <div class="card">
             <h2>3. Custom Abbreviations (JSON)</h2>
-            <textarea id="abbreviations"></textarea>
+            <textarea id="abbreviations" placeholder='{ "tomato": "T" }'></textarea>
         </div>
 
         <button type="submit" class="save-btn">💾 Save Settings</button>
@@ -91,26 +97,23 @@
                 document.getElementById('title').value = data.design.title || "";
                 document.getElementById('footer').value = data.design.footer || "";
 
-                document.getElementById('abbreviations').value = JSON.stringify(data.abbreviations, null, 4);
+                // JSON이 없으면 빈 객체 {} 표시
+                const abbrData = data.abbreviations || {};
+                document.getElementById('abbreviations').value = JSON.stringify(abbrData, null, 4);
             } catch (e) {
                 console.error(e);
                 showMessage("Failed to load settings.", false);
             }
         }
 
-        // ✨ [추가] 프린터 테스트 함수
+        // 🖨️ 프린터 연결 테스트
         async function testPrinter(inputId) {
             const ip = document.getElementById(inputId).value;
-            if (!ip) {
-                showMessage("Please enter an IP address first.", false);
-                return;
-            }
+            if (!ip) return showMessage("Please enter an IP address first.", false);
 
-            // 버튼 텍스트 변경 (Testing...)
             const btn = document.querySelector(`button[onclick="testPrinter('${inputId}')"]`);
             const originalText = btn.innerText;
-            btn.innerText = "⏳";
-            btn.disabled = true;
+            setButtonLoading(btn, true);
 
             try {
                 const res = await fetch('/api/test-printer', {
@@ -120,16 +123,49 @@
                 });
                 const data = await res.json();
 
-                if (data.success) {
-                    showMessage(`✅ Connection Successful! (${ip})`, true);
-                } else {
-                    showMessage(`❌ Connection Failed: ${data.error}`, false);
-                }
+                if (data.success) showMessage(`✅ Connection Successful! (${ip})`, true);
+                else showMessage(`❌ Connection Failed: ${data.error}`, false);
             } catch (e) {
                 showMessage(`❌ Network Error`, false);
             } finally {
-                // 버튼 복구
-                btn.innerText = originalText;
+                setButtonLoading(btn, false, originalText);
+            }
+        }
+
+        // 💵 ✨ [추가] 돈통 열기 테스트
+        async function testDrawer() {
+            const ip = document.getElementById('receipt_ip').value;
+            if (!ip) return showMessage("Please enter Receipt Printer IP first.", false);
+
+            const btn = document.querySelector('.drawer-btn');
+            const originalText = btn.innerText;
+            setButtonLoading(btn, true);
+
+            try {
+                // 우리가 만든 API 호출
+                const res = await fetch('/api/printer/open-drawer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ printerIp: ip })
+                });
+                const data = await res.json();
+
+                if (data.success) showMessage(`✅ Drawer Signal Sent!`, true);
+                else showMessage(`❌ Failed to Open: ${data.message}`, false);
+            } catch (e) {
+                showMessage(`❌ Network Error`, false);
+            } finally {
+                setButtonLoading(btn, false, originalText);
+            }
+        }
+
+        // 버튼 로딩 상태 유틸
+        function setButtonLoading(btn, isLoading, text = "") {
+            if (isLoading) {
+                btn.innerText = "⏳";
+                btn.disabled = true;
+            } else {
+                btn.innerText = text;
                 btn.disabled = false;
             }
         }
@@ -139,7 +175,8 @@
             e.preventDefault();
             let abbrJson;
             try {
-                abbrJson = JSON.parse(document.getElementById('abbreviations').value);
+                const val = document.getElementById('abbreviations').value;
+                abbrJson = val ? JSON.parse(val) : {};
             } catch (e) {
                 showMessage("Invalid JSON in Abbreviations field.", false);
                 return;
@@ -176,7 +213,12 @@
             const msgDiv = document.getElementById('message');
             msgDiv.textContent = text;
             msgDiv.className = 'msg ' + (isSuccess ? 'success' : 'error');
-            setTimeout(() => { msgDiv.className = 'msg'; }, 3000);
+            // 3초 후 메시지 사라짐
+            setTimeout(() => { 
+                msgDiv.style.display = 'none'; 
+                msgDiv.className = 'msg'; 
+            }, 3000);
+            msgDiv.style.display = 'block';
         }
 
         loadSettings();
