@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src *;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printer Server Admin</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: #555; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #666; font-size: 0.9em; }
+        
+        /* ✨ [수정] 입력창과 버튼을 나란히 놓기 위한 스타일 */
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-group input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .input-group button.test-btn { width: 80px; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .input-group button.test-btn:hover { background: #5a6268; }
+
+        textarea { width: 100%; padding: 10px; height: 150px; font-family: monospace; border: 1px solid #ddd; border-radius: 5px; }
+        button.save-btn { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
+        button.save-btn:hover { background: #0056b3; }
+        
+        .msg { padding: 10px; border-radius: 5px; margin-bottom: 10px; display: none; text-align: center; }
+        .success { background: #d4edda; color: #155724; display: block; }
+        .error { background: #f8d7da; color: #721c24; display: block; }
+    </style>
+</head>
+<body>
+    <h1>🖨️ Printer Server Admin (Network)</h1>
+    <div id="message" class="msg"></div>
+
+    <form id="settingsForm">
+        <div class="card">
+            <h2>1. Printer Network Connections</h2>
+            
+            <label>Kitchen Printer 1 IP (Main Food)</label>
+            <div class="input-group">
+                <input type="text" id="kitchen1_ip" placeholder="e.g. 192.168.50.3">
+                <button type="button" class="test-btn" onclick="testPrinter('kitchen1_ip')">Test</button>
+            </div>
+            
+            <label>Kitchen Printer 2 IP (Shake/Drink)</label>
+            <div class="input-group">
+                <input type="text" id="kitchen2_ip" placeholder="e.g. 192.168.50.19">
+                <button type="button" class="test-btn" onclick="testPrinter('kitchen2_ip')">Test</button>
+            </div>
+            
+            <label>Receipt Printer IP (Network)</label>
+            <div class="input-group">
+                <input type="text" id="receipt_ip" placeholder="e.g. 192.168.50.20">
+                <button type="button" class="test-btn" onclick="testPrinter('receipt_ip')">Test</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. Receipt Design</h2>
+            <label>Receipt Title (Header)</label>
+            <div class="input-group">
+                <input type="text" id="title" placeholder="Store Name">
+            </div>
+            
+            <label>Receipt Footer Message</label>
+            <div class="input-group">
+                <input type="text" id="footer" placeholder="Thank You Message">
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>3. Custom Abbreviations (JSON)</h2>
+            <textarea id="abbreviations"></textarea>
+        </div>
+
+        <button type="submit" class="save-btn">💾 Save Settings</button>
+    </form>
+
+    <script>
+        const API_URL = '/api/settings';
+
+        // Load Settings
+        async function loadSettings() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+
+                document.getElementById('kitchen1_ip').value = data.printers.kitchen1_ip || "";
+                document.getElementById('kitchen2_ip').value = data.printers.kitchen2_ip || "";
+                document.getElementById('receipt_ip').value = data.printers.receipt_ip || "";
+                
+                document.getElementById('title').value = data.design.title || "";
+                document.getElementById('footer').value = data.design.footer || "";
+
+                document.getElementById('abbreviations').value = JSON.stringify(data.abbreviations, null, 4);
+            } catch (e) {
+                console.error(e);
+                showMessage("Failed to load settings.", false);
+            }
+        }
+
+        // ✨ [추가] 프린터 테스트 함수
+        async function testPrinter(inputId) {
+            const ip = document.getElementById(inputId).value;
+            if (!ip) {
+                showMessage("Please enter an IP address first.", false);
+                return;
+            }
+
+            // 버튼 텍스트 변경 (Testing...)
+            const btn = document.querySelector(`button[onclick="testPrinter('${inputId}')"]`);
+            const originalText = btn.innerText;
+            btn.innerText = "⏳";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/test-printer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showMessage(`✅ Connection Successful! (${ip})`, true);
+                } else {
+                    showMessage(`❌ Connection Failed: ${data.error}`, false);
+                }
+            } catch (e) {
+                showMessage(`❌ Network Error`, false);
+            } finally {
+                // 버튼 복구
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Save Settings
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            let abbrJson;
+            try {
+                abbrJson = JSON.parse(document.getElementById('abbreviations').value);
+            } catch (e) {
+                showMessage("Invalid JSON in Abbreviations field.", false);
+                return;
+            }
+
+            const payload = {
+                printers: {
+                    kitchen1_ip: document.getElementById('kitchen1_ip').value,
+                    kitchen2_ip: document.getElementById('kitchen2_ip').value,
+                    receipt_ip: document.getElementById('receipt_ip').value 
+                },
+                design: {
+                    title: document.getElementById('title').value,
+                    footer: document.getElementById('footer').value,
+                    show_date: true
+                },
+                abbreviations: abbrJson
+            };
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) showMessage("Settings Saved Successfully!", true);
+                else showMessage("Failed to save.", false);
+            } catch (e) {
+                showMessage("Error saving settings.", false);
+            }
+        });
+
+        function showMessage(text, isSuccess) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = 'msg ' + (isSuccess ? 'success' : 'error');
+            setTimeout(() => { msgDiv.className = 'msg'; }, 3000);
+        }
+
+        loadSettings();
+    </script>
+</body>
+</html>

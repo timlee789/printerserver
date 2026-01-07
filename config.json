@@ -1,0 +1,22 @@
+{
+    "settings": {
+        "printers": {
+            "kitchen1_ip": "192.168.50.3",
+            "kitchen2_ip": "192.168.50.19",
+            "receipt_ip": ""
+        },
+        "design": {
+            "title": "THE COLLEGIATE GRILL",
+            "footer": "Thank You!",
+            "show_date": true
+        },
+        "abbreviations": {
+            "slaw": "S",
+            "onion": "O",
+            "mayo": "M",
+            "to go": "TO GO",
+            "dine in": "Dine In",
+            "Ketchup": "K"
+        }
+    }
+}
