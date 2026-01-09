@@ -6,98 +6,137 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printer Server Admin</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; padding: 20px; max-width: 800px; margin: 0 auto; }
-        h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { margin-top: 0; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #666; font-size: 0.9em; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; padding: 20px; max-width: 800px; margin: 0 auto; color: #333; }
         
-        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .input-group input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
-        
-        /* 버튼 스타일링 */
-        button { cursor: pointer; border: none; border-radius: 5px; font-weight: bold; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* 헤더 스타일 */
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { color: #1a1a1a; margin: 0; font-size: 2rem; }
+        p.subtitle { color: #666; margin-top: 5px; }
 
-        .test-btn { width: 80px; padding: 10px; background: #6c757d; color: white; }
-        .drawer-btn { width: 110px; padding: 10px; background: #28a745; color: white; } /* 돈통 버튼 (녹색) */
-        .save-btn { background: #007bff; color: white; padding: 12px 20px; font-size: 16px; width: 100%; margin-top: 10px; }
-
-        textarea { width: 100%; padding: 10px; height: 150px; font-family: monospace; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        /* 카드 스타일 */
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e1e4e8; }
+        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #f0f0f0; padding-bottom: 12px; margin-bottom: 20px; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; }
         
-        .msg { padding: 10px; border-radius: 5px; margin-bottom: 10px; display: none; text-align: center; font-weight: bold; }
-        .success { background: #d4edda; color: #155724; display: block; }
-        .error { background: #f8d7da; color: #721c24; display: block; }
+        /* 입력 폼 스타일 */
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; font-size: 0.95em; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .input-group input[type="text"] { flex: 1; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 15px; transition: border-color 0.2s; }
+        .input-group input[type="text"]:focus { border-color: #3182ce; outline: none; box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2); }
+        
+        /* JSON 에디터 스타일 */
+        .json-editor-container { position: relative; }
+        textarea { width: 100%; padding: 15px; height: 200px; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 8px; background-color: #fafbfc; color: #24292e; resize: vertical; line-height: 1.5; }
+        textarea:focus { border-color: #3182ce; outline: none; background-color: #fff; }
+        .format-btn { position: absolute; top: 10px; right: 10px; background: #edf2f7; color: #4a5568; font-size: 12px; padding: 5px 10px; border-radius: 4px; border: 1px solid #cbd5e0; }
+        .format-btn:hover { background: #e2e8f0; }
+
+        /* 버튼 공통 */
+        button { cursor: pointer; border: none; border-radius: 6px; font-weight: 600; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        button:hover { transform: translateY(-1px); shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .test-btn { padding: 0 15px; background: #718096; color: white; min-width: 90px; }
+        .test-btn:hover { background: #4a5568; }
+        
+        .drawer-btn { padding: 0 15px; background: #38a169; color: white; min-width: 120px; } /* 녹색 */
+        .drawer-btn:hover { background: #2f855a; }
+
+        .save-btn { background: #3182ce; color: white; padding: 15px; font-size: 16px; width: 100%; margin-top: 10px; box-shadow: 0 4px 6px rgba(49, 130, 206, 0.3); }
+        .save-btn:hover { background: #2b6cb0; }
+
+        /* 메시지 박스 */
+        .msg { padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; text-align: center; font-weight: bold; animation: slideDown 0.3s ease-out; }
+        .success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .error { background: #fed7d7; color: #742a2a; border: 1px solid #feb2b2; }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .helper-text { font-size: 0.85em; color: #718096; margin-top: -8px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <h1>🖨️ Printer Server Admin</h1>
+
+    <header>
+        <h1>🖨️ Printer Server Admin</h1>
+        <p class="subtitle">Manage network printers and receipt settings</p>
+    </header>
+
     <div id="message" class="msg"></div>
 
     <form id="settingsForm">
         <div class="card">
-            <h2>1. Printer Network Connections</h2>
+            <h2>📡 Network Printers</h2>
             
-            <label>Kitchen Printer 1 IP (Main Food)</label>
+            <label>Kitchen 1 (Food)</label>
             <div class="input-group">
                 <input type="text" id="kitchen1_ip" placeholder="e.g. 192.168.50.3">
                 <button type="button" class="test-btn" onclick="testPrinter('kitchen1_ip')">Test 🖨️</button>
             </div>
             
-            <label>Kitchen Printer 2 IP (Shake/Drink)</label>
+            <label>Kitchen 2 (Shake/Drink)</label>
             <div class="input-group">
                 <input type="text" id="kitchen2_ip" placeholder="e.g. 192.168.50.19">
                 <button type="button" class="test-btn" onclick="testPrinter('kitchen2_ip')">Test 🖨️</button>
             </div>
             
-            <label>Receipt Printer IP (Network)</label>
+            <label>Receipt Printer (Counter)</label>
             <div class="input-group">
                 <input type="text" id="receipt_ip" placeholder="e.g. 192.168.50.20">
                 <button type="button" class="drawer-btn" onclick="testDrawer()">Open 💵</button>
                 <button type="button" class="test-btn" onclick="testPrinter('receipt_ip')">Test 🖨️</button>
             </div>
-            <p style="font-size: 0.8em; color: #888; margin-top: -10px;">* The Cash Drawer is connected to the Receipt Printer.</p>
+            <p class="helper-text">* The Cash Drawer is connected via the Receipt Printer.</p>
         </div>
 
         <div class="card">
-            <h2>2. Receipt Design</h2>
-            <label>Receipt Title (Header)</label>
+            <h2>🧾 Receipt Design</h2>
+            <label>Store Title (Header)</label>
             <div class="input-group">
-                <input type="text" id="title" placeholder="Store Name">
+                <input type="text" id="title" placeholder="THE COLLEGIATE GRILL">
             </div>
             
-            <label>Receipt Footer Message</label>
+            <label>Footer Message</label>
             <div class="input-group">
-                <input type="text" id="footer" placeholder="Thank You Message">
+                <input type="text" id="footer" placeholder="Thank You!">
             </div>
         </div>
 
         <div class="card">
-            <h2>3. Custom Abbreviations (JSON)</h2>
-            <textarea id="abbreviations" placeholder='{ "tomato": "T" }'></textarea>
+            <h2>🔤 Kitchen Abbreviations</h2>
+            <p class="helper-text">Map long menu names to short codes for the kitchen. Must be valid JSON.</p>
+            
+            <div class="json-editor-container">
+                <button type="button" class="format-btn" onclick="formatJSON()">✨ Format JSON</button>
+                <textarea id="abbreviations" placeholder='{
+    "tomato": "T",
+    "lettuce": "L"
+}'></textarea>
+            </div>
         </div>
 
-        <button type="submit" class="save-btn">💾 Save Settings</button>
+        <button type="submit" class="save-btn">💾 Save All Settings</button>
     </form>
 
     <script>
         const API_URL = '/api/settings';
 
-        // Load Settings
+        // 1. 설정 불러오기
         async function loadSettings() {
             try {
                 const res = await fetch(API_URL);
                 const data = await res.json();
 
+                // 프린터 IP
                 document.getElementById('kitchen1_ip').value = data.printers.kitchen1_ip || "";
                 document.getElementById('kitchen2_ip').value = data.printers.kitchen2_ip || "";
                 document.getElementById('receipt_ip').value = data.printers.receipt_ip || "";
                 
+                // 디자인
                 document.getElementById('title').value = data.design.title || "";
                 document.getElementById('footer').value = data.design.footer || "";
 
-                // JSON이 없으면 빈 객체 {} 표시
+                // JSON 약어 (보기 좋게 포맷팅하여 표시)
                 const abbrData = data.abbreviations || {};
                 document.getElementById('abbreviations').value = JSON.stringify(abbrData, null, 4);
             } catch (e) {
@@ -106,7 +145,7 @@
             }
         }
 
-        // 🖨️ 프린터 연결 테스트
+        // 2. 프린터 테스트
         async function testPrinter(inputId) {
             const ip = document.getElementById(inputId).value;
             if (!ip) return showMessage("Please enter an IP address first.", false);
@@ -132,7 +171,7 @@
             }
         }
 
-        // 💵 ✨ [추가] 돈통 열기 테스트
+        // 3. 돈통 열기 테스트
         async function testDrawer() {
             const ip = document.getElementById('receipt_ip').value;
             if (!ip) return showMessage("Please enter Receipt Printer IP first.", false);
@@ -142,7 +181,6 @@
             setButtonLoading(btn, true);
 
             try {
-                // 우리가 만든 API 호출
                 const res = await fetch('/api/printer/open-drawer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -159,26 +197,41 @@
             }
         }
 
-        // 버튼 로딩 상태 유틸
+        // 4. JSON 포맷팅 (Beautify) 버튼 기능
+        function formatJSON() {
+            const textarea = document.getElementById('abbreviations');
+            try {
+                const val = JSON.parse(textarea.value);
+                textarea.value = JSON.stringify(val, null, 4);
+                showMessage("✨ JSON Formatted!", true);
+            } catch (e) {
+                showMessage("⚠️ Invalid JSON. Please check syntax.", false);
+            }
+        }
+
+        // 유틸: 버튼 로딩 상태
         function setButtonLoading(btn, isLoading, text = "") {
             if (isLoading) {
+                btn.dataset.originalText = btn.innerText; // 원래 텍스트 저장
                 btn.innerText = "⏳";
                 btn.disabled = true;
             } else {
-                btn.innerText = text;
+                btn.innerText = text || btn.dataset.originalText;
                 btn.disabled = false;
             }
         }
 
-        // Save Settings
+        // 5. 설정 저장 (Submit)
         document.getElementById('settingsForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             let abbrJson;
+            
+            // JSON 유효성 검사
             try {
                 const val = document.getElementById('abbreviations').value;
                 abbrJson = val ? JSON.parse(val) : {};
             } catch (e) {
-                showMessage("Invalid JSON in Abbreviations field.", false);
+                showMessage("❌ Invalid JSON in Abbreviations field. Please fix syntax.", false);
                 return;
             }
 
@@ -196,31 +249,42 @@
                 abbreviations: abbrJson
             };
 
+            const btn = document.querySelector('.save-btn');
+            setButtonLoading(btn, true);
+
             try {
                 const res = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (res.ok) showMessage("Settings Saved Successfully!", true);
-                else showMessage("Failed to save.", false);
+                if (res.ok) showMessage("💾 Settings Saved Successfully!", true);
+                else showMessage("❌ Failed to save.", false);
             } catch (e) {
-                showMessage("Error saving settings.", false);
+                showMessage("❌ Error saving settings.", false);
+            } finally {
+                setButtonLoading(btn, false, "💾 Save All Settings");
             }
         });
 
+        // 메시지 표시 함수
         function showMessage(text, isSuccess) {
             const msgDiv = document.getElementById('message');
             msgDiv.textContent = text;
             msgDiv.className = 'msg ' + (isSuccess ? 'success' : 'error');
-            // 3초 후 메시지 사라짐
-            setTimeout(() => { 
-                msgDiv.style.display = 'none'; 
-                msgDiv.className = 'msg'; 
-            }, 3000);
             msgDiv.style.display = 'block';
+            
+            // 3초 후 사라짐
+            setTimeout(() => { 
+                msgDiv.style.opacity = '0';
+                setTimeout(() => {
+                    msgDiv.style.display = 'none'; 
+                    msgDiv.style.opacity = '1';
+                }, 300);
+            }, 3000);
         }
 
+        // 페이지 로드 시 실행
         loadSettings();
     </script>
 </body>
